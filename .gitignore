@@ -10,3 +10,16 @@
 
 # auto-managed large-file section (>5MB)
 # (paths appended by commit-push-to-github)
+
+# Auto-managed: files larger than 5 MB
+.gitnexus/lbug
+lexmora-api/cloudflare/node_modules/@cloudflare/workerd-windows-64/bin/workerd.exe
+lexmora-api/cloudflare/node_modules/@esbuild/win32-x64/esbuild.exe
+lexmora-api/cloudflare/node_modules/@img/sharp-win32-x64/lib/libvips-42.dll
+lexmora-api/cloudflare/node_modules/miniflare/dist/src/index.js.map
+lexmora-api/cloudflare/node_modules/typescript/lib/_tsc.js
+lexmora-api/cloudflare/node_modules/typescript/lib/typescript.js
+lexmora-api/cloudflare/node_modules/wrangler/wrangler-dist/cli.js
+lexmora-webui/node_modules/@esbuild/win32-x64/esbuild.exe
+lexmora-webui/node_modules/typescript/lib/tsc.js
+lexmora-webui/node_modules/typescript/lib/typescript.js
