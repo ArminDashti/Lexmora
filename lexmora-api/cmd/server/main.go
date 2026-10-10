@@ -52,7 +52,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("gemini client: %v", err)
 	}
-	transformService := service.NewTransformService(historyRepo, settingsService, instructionService, openRouter, gemini)
+	openCodeGo, err := service.NewOpenCodeGoClient("", cfg.OpenRouterHTTPProxy)
+	if err != nil {
+		log.Fatalf("opencode go client: %v", err)
+	}
+	transformService := service.NewTransformService(historyRepo, settingsService, instructionService, openRouter, gemini, openCodeGo)
 	historyService := service.NewHistoryService(historyRepo)
 	statsService := service.NewStatsService(historyRepo)
 	quizService := service.NewQuizService(historyRepo)
@@ -64,7 +68,7 @@ func main() {
 		log.Fatalf("instructions: %v", err)
 	}
 
-	h := handler.New(authService, transformService, historyService, statsService, settingsService, instructionService, quizService, openRouter)
+	h := handler.New(authService, transformService, historyService, statsService, settingsService, instructionService, quizService, openRouter, openCodeGo)
 
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{

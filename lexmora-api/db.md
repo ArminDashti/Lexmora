@@ -21,7 +21,8 @@ Singleton row for LLM provider configuration.
 | id | INT | PRIMARY KEY, DEFAULT 1, CHECK (id = 1) |
 | openrouter_api_key | TEXT | NOT NULL, DEFAULT '' |
 | gemini_api_key | TEXT | NOT NULL, DEFAULT '' |
-| api_provider | TEXT | NOT NULL, DEFAULT `openrouter`, CHECK (`openrouter`\|`gemini`) |
+| opencode_go_api_key | TEXT | NOT NULL, DEFAULT '' |
+| api_provider | TEXT | NOT NULL, DEFAULT `openrouter`, CHECK (`openrouter`\|`gemini`\|`opencode_go`) |
 | model_name | TEXT | NOT NULL, DEFAULT `anthropic/claude-3.5-sonnet` |
 | updated_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() |
 
