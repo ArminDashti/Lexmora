@@ -33,6 +33,7 @@ type TransformService struct {
 	instructionSvc  *InstructionService
 	openRouter      *OpenRouterClient
 	gemini          *GeminiClient
+	openCodeGo      *OpenCodeGoClient
 }
 
 func NewTransformService(
@@ -41,6 +42,7 @@ func NewTransformService(
 	instructionSvc *InstructionService,
 	openRouter *OpenRouterClient,
 	gemini *GeminiClient,
+	openCodeGo *OpenCodeGoClient,
 ) *TransformService {
 	return &TransformService{
 		historyRepo:     historyRepo,
@@ -48,6 +50,7 @@ func NewTransformService(
 		instructionSvc:  instructionSvc,
 		openRouter:      openRouter,
 		gemini:          gemini,
+		openCodeGo:      openCodeGo,
 	}
 }
 
@@ -125,6 +128,8 @@ func (s *TransformService) complete(ctx context.Context, settings *domain.AppSet
 		return s.gemini.Complete(ctx, settings.GeminiAPIKey, settings.ModelName, systemPrompt, userText)
 	case "openrouter":
 		return s.openRouter.Complete(ctx, settings.OpenRouterAPIKey, settings.ModelName, systemPrompt, userText)
+	case "opencode_go":
+		return s.openCodeGo.Complete(ctx, settings.OpenCodeGoAPIKey, settings.ModelName, systemPrompt, userText)
 	default:
 		return "", fmt.Errorf("invalid api_provider: %s", settings.APIProvider)
 	}

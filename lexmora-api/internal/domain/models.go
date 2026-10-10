@@ -15,11 +15,12 @@ type User struct {
 }
 
 type AppSettings struct {
-	OpenRouterAPIKey string    `json:"openrouter_api_key"`
-	GeminiAPIKey     string    `json:"gemini_api_key"`
-	APIProvider      string    `json:"api_provider"`
-	ModelName        string    `json:"model_name"`
-	UpdatedAt        time.Time `json:"updated_at"`
+	OpenRouterAPIKey  string    `json:"openrouter_api_key"`
+	GeminiAPIKey      string    `json:"gemini_api_key"`
+	OpenCodeGoAPIKey  string    `json:"opencode_go_api_key"`
+	APIProvider       string    `json:"api_provider"`
+	ModelName         string    `json:"model_name"`
+	UpdatedAt         time.Time `json:"updated_at"`
 }
 
 type Instruction struct {
