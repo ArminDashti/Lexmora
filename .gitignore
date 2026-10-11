@@ -23,3 +23,26 @@ lexmora-api/cloudflare/node_modules/wrangler/wrangler-dist/cli.js
 lexmora-webui/node_modules/@esbuild/win32-x64/esbuild.exe
 lexmora-webui/node_modules/typescript/lib/tsc.js
 lexmora-webui/node_modules/typescript/lib/typescript.js
+
+# hygiene
+node_modules/
+dist/
+build/
+bin/
+obj/
+.venv/
+__pycache__/
+*.log
+logs/
+.env
+.env.*
+*.tsbuildinfo
+.cache/
+coverage/
+*.zip
+*.7z
+graphify-out/
+.gitnexus/
+!.env.example
+/.cursor/skills/caveman-setup/SKILL.md
+/lexmora-webui/src/views/SettingsView.vue
