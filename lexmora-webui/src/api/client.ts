@@ -271,7 +271,8 @@ export interface Instruction {
 export interface AppSettings {
   openrouter_api_key: string
   gemini_api_key: string
-  api_provider: 'openrouter' | 'gemini'
+  opencode_go_api_key: string
+  api_provider: 'openrouter' | 'gemini' | 'opencode_go'
   model_name: string
   updated_at: string
 }
