@@ -25,21 +25,21 @@ func main() {
 		log.Fatalf("config: %v", err)
 	}
 
-	if err := db.RunMigrations(cfg.DatabaseURL); err != nil {
+	if err := db.RunMigrations(cfg.DatabasePath); err != nil {
 		log.Fatalf("migrations: %v", err)
 	}
 
 	ctx := context.Background()
-	pool, err := db.NewPool(ctx, cfg.DatabaseURL)
+	sqlDB, err := db.Open(cfg.DatabasePath)
 	if err != nil {
 		log.Fatalf("database: %v", err)
 	}
-	defer pool.Close()
+	defer sqlDB.Close()
 
-	userRepo := repository.NewUserRepository(pool)
-	settingsRepo := repository.NewSettingsRepository(pool)
-	historyRepo := repository.NewHistoryRepository(pool)
-	instructionRepo := repository.NewInstructionRepository(pool)
+	userRepo := repository.NewUserRepository(sqlDB)
+	settingsRepo := repository.NewSettingsRepository(sqlDB)
+	historyRepo := repository.NewHistoryRepository(sqlDB)
+	instructionRepo := repository.NewInstructionRepository(sqlDB)
 
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
 	settingsService := service.NewSettingsService(settingsRepo)

@@ -1,6 +1,6 @@
 # Docker deployment
 
-Web UI nginx container from this repo. The API and PostgreSQL run separately from [lexmora-api](https://github.com/ArminDashti/lexmora-api).
+Web UI nginx container from this repo. The API (SQLite) runs separately from [lexmora-api](https://github.com/ArminDashti/lexmora-api).
 
 ## Preferred files (`.armin/docker-scripts/`)
 

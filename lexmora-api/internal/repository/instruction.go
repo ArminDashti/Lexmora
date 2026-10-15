@@ -2,24 +2,23 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ArminDashti/lexmora-api/internal/domain"
 )
 
 type InstructionRepository struct {
-	pool *pgxpool.Pool
+	conn *sql.DB
 }
 
-func NewInstructionRepository(pool *pgxpool.Pool) *InstructionRepository {
-	return &InstructionRepository{pool: pool}
+func NewInstructionRepository(conn *sql.DB) *InstructionRepository {
+	return &InstructionRepository{conn: conn}
 }
 
 func (r *InstructionRepository) List(ctx context.Context) ([]domain.Instruction, error) {
-	rows, err := r.pool.Query(ctx, `
+	rows, err := r.conn.QueryContext(ctx, `
 		SELECT key, content, updated_at FROM instructions ORDER BY key ASC
 	`)
 	if err != nil {
@@ -40,10 +39,10 @@ func (r *InstructionRepository) List(ctx context.Context) ([]domain.Instruction,
 
 func (r *InstructionRepository) Get(ctx context.Context, key string) (*domain.Instruction, error) {
 	var i domain.Instruction
-	err := r.pool.QueryRow(ctx, `
-		SELECT key, content, updated_at FROM instructions WHERE key = $1
+	err := r.conn.QueryRowContext(ctx, `
+		SELECT key, content, updated_at FROM instructions WHERE key = ?
 	`, key).Scan(&i.Key, &i.Content, &i.UpdatedAt)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
 	if err != nil {
@@ -54,9 +53,10 @@ func (r *InstructionRepository) Get(ctx context.Context, key string) (*domain.In
 
 func (r *InstructionRepository) Upsert(ctx context.Context, key, content string) (*domain.Instruction, error) {
 	var i domain.Instruction
-	err := r.pool.QueryRow(ctx, `
-		INSERT INTO instructions (key, content) VALUES ($1, $2)
-		ON CONFLICT (key) DO UPDATE SET content = EXCLUDED.content, updated_at = now()
+	err := r.conn.QueryRowContext(ctx, `
+		INSERT INTO instructions (key, content) VALUES (?, ?)
+		ON CONFLICT (key) DO UPDATE SET content = excluded.content,
+			updated_at = strftime('%Y-%m-%d %H:%M:%f', 'now')
 		RETURNING key, content, updated_at
 	`, key, content).Scan(&i.Key, &i.Content, &i.UpdatedAt)
 	if err != nil {
@@ -66,11 +66,15 @@ func (r *InstructionRepository) Upsert(ctx context.Context, key, content string)
 }
 
 func (r *InstructionRepository) Delete(ctx context.Context, key string) error {
-	tag, err := r.pool.Exec(ctx, `DELETE FROM instructions WHERE key = $1`, key)
+	res, err := r.conn.ExecContext(ctx, `DELETE FROM instructions WHERE key = ?`, key)
 	if err != nil {
 		return fmt.Errorf("delete instruction: %w", err)
 	}
-	if tag.RowsAffected() == 0 {
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("delete instruction: %w", err)
+	}
+	if n == 0 {
 		return ErrNotFound
 	}
 	return nil

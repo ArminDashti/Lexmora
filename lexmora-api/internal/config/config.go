@@ -11,7 +11,7 @@ import (
 type Config struct {
 	Port                string
 	JWTSecret           string
-	DatabaseURL         string
+	DatabasePath        string
 	StaticDir           string
 	CorsOrigins         []string
 	DefaultUsername     string
@@ -25,7 +25,7 @@ func Load() (*Config, error) {
 	cfg := &Config{
 		Port:                getEnv("PORT", "8080"),
 		JWTSecret:           os.Getenv("JWT_SECRET"),
-		DatabaseURL:         os.Getenv("DATABASE_URL"),
+		DatabasePath:        getEnv("DATABASE_PATH", "lexmora.db"),
 		StaticDir:           os.Getenv("STATIC_DIR"),
 		CorsOrigins:         splitList(getEnv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8082,http://127.0.0.1:8082")),
 		DefaultUsername:     getEnv("DEFAULT_USERNAME", "armin"),
@@ -35,9 +35,6 @@ func Load() (*Config, error) {
 
 	if cfg.JWTSecret == "" {
 		return nil, fmt.Errorf("JWT_SECRET is required")
-	}
-	if cfg.DatabaseURL == "" {
-		return nil, fmt.Errorf("DATABASE_URL is required")
 	}
 
 	return cfg, nil

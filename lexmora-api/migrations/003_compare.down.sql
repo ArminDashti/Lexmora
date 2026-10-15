@@ -1,2 +1,0 @@
--- PostgreSQL cannot remove enum values safely.
--- Recreate history_type without compare_* only if no rows use them.

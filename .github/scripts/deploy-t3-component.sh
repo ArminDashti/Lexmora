@@ -105,8 +105,7 @@ COMPOSE_CMD="${ENV_PREFIX} docker compose -p '${STACK_NAME}' ${COMPOSE_FILES_REM
 echo ">> docker compose up (${COMPONENT}, lexmora-* only)"
 case "$COMPONENT" in
   api)
-    # Keep Postgres running; refresh API image only (no stack-wide --force-recreate).
-    remote "${COMPOSE_CMD} up -d --no-recreate lexmora-pgsql"
+    # Refresh API image only (no stack-wide --force-recreate).
     remote "${COMPOSE_CMD} up -d --no-deps lexmora-api"
     ;;
   webui)

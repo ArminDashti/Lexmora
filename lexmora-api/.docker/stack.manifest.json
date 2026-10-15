@@ -2,7 +2,6 @@
   "stackName": "lexmora",
   "containerName": "lexmora-api",
   "apiContainerName": "lexmora-api",
-  "postgresContainerName": "lexmora-pgsql",
   "internalPort": "8080",
   "apiImageTag": "lexmora-api:latest",
   "publishPort": "8083",

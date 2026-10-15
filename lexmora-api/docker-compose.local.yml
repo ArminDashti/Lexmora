@@ -1,31 +1,14 @@
-# Local Docker hot-reload: Postgres + Go Air API + Vite WebUI (bind mounts).
+# Local Docker hot-reload: Go Air API (SQLite) + Vite WebUI (bind mounts).
 # Usage: docker compose -f docker-compose.local.yml -p lexmora up -d --force-recreate
 name: lexmora
 services:
-  postgres:
-    image: postgres:16-alpine
-    restart: "no"
-    environment:
-      POSTGRES_USER: lexmora
-      POSTGRES_PASSWORD: lexmora
-      POSTGRES_DB: lexmora
-    ports:
-      - "5437:5432"
-    volumes:
-      - lexmora-postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U lexmora -d lexmora"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
   api:
     image: golang:1.23-alpine
     restart: "no"
     working_dir: /app
     environment:
       PORT: "8080"
-      DATABASE_URL: postgres://lexmora:lexmora@postgres:5432/lexmora?sslmode=disable
+      DATABASE_PATH: /data/lexmora.db
       JWT_SECRET: change-me-lexmora-jwt
       CORS_ORIGINS: http://localhost:5180,http://127.0.0.1:5180,http://localhost:5173,http://127.0.0.1:5173
       DEFAULT_USERNAME: armin
@@ -40,11 +23,9 @@ services:
       - .:/app
       - lexmora-gomod:/go/pkg/mod
       - lexmora-gotmp:/app/tmp
+      - lexmora-sqlite-data:/data
     ports:
       - "8178:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
 
   webui:
     image: node:22-alpine
@@ -72,7 +53,7 @@ services:
       - api
 
 volumes:
-  lexmora-postgres-data:
+  lexmora-sqlite-data:
   lexmora-gomod:
   lexmora-gotmp:
   lexmora-webui-node-modules:

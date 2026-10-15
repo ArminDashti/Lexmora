@@ -1,2 +1,0 @@
-ALTER TABLE history
-    ADD COLUMN IF NOT EXISTS quiz_shown_count INT NOT NULL DEFAULT 0;

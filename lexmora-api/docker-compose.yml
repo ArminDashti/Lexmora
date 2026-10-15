@@ -1,26 +1,6 @@
 name: lexmora
 
 services:
-  lexmora-pgsql:
-    image: postgres:16
-    container_name: lexmora-pgsql
-    environment:
-      POSTGRES_USER: translator
-      POSTGRES_PASSWORD: translator
-      POSTGRES_DB: translator
-    volumes:
-      - lexmora-pgsql-vol:/var/lib/postgresql/data
-    expose:
-      - "5432"
-    networks:
-      - t3-net
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U translator -d translator"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: "no"
-
   lexmora-api:
     # Image is built by .armin/docker-scripts/run-on-docker-*.ps1 (context = repo root).
     # Host publish is optional via docker-compose.publish.yml when publish_port is set.
@@ -33,7 +13,7 @@ services:
     environment:
       PORT: "8080"
       JWT_SECRET: ${JWT_SECRET:-change-me-docker-dev-only}
-      DATABASE_URL: postgres://translator:translator@lexmora-pgsql:5432/translator?sslmode=disable
+      DATABASE_PATH: /data/lexmora.db
       DEFAULT_USERNAME: ${DEFAULT_USERNAME:-armin}
       DEFAULT_PASSWORD: ${DEFAULT_PASSWORD:-IUpe8SqXxtJrEJxZ}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:8090,http://127.0.0.1:8090,https://lexmora.xaigrok.ir}
@@ -42,9 +22,6 @@ services:
       - lexmora-api-vol:/data
     networks:
       - t3-net
-    depends_on:
-      lexmora-pgsql:
-        condition: service_healthy
     restart: "no"
 
 networks:
@@ -53,7 +30,5 @@ networks:
     external: true
 
 volumes:
-  lexmora-pgsql-vol:
-    name: lexmora-pgsql-vol
   lexmora-api-vol:
     name: lexmora-api-vol

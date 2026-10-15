@@ -1,56 +1,41 @@
-CREATE TABLE llm_models (
-    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    slug          TEXT NOT NULL UNIQUE,
-    openrouter_id TEXT NOT NULL UNIQUE,
-    display_name  TEXT NOT NULL,
-    is_active     BOOLEAN NOT NULL DEFAULT true,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+CREATE TABLE users (
+    id            TEXT PRIMARY KEY,
+    username      TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at    DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
 );
 
 CREATE TABLE app_settings (
-    id               INT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
-    default_model_id UUID REFERENCES llm_models(id) ON DELETE SET NULL,
-    updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+    id                  INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    openrouter_api_key  TEXT NOT NULL DEFAULT '',
+    gemini_api_key      TEXT NOT NULL DEFAULT '',
+    opencode_go_api_key TEXT NOT NULL DEFAULT '',
+    api_provider        TEXT NOT NULL DEFAULT 'openrouter' CHECK (api_provider IN ('openrouter', 'gemini', 'opencode_go')),
+    model_name          TEXT NOT NULL DEFAULT 'anthropic/claude-3.5-sonnet',
+    updated_at          DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
 );
 
 INSERT INTO app_settings (id) VALUES (1);
 
-CREATE TABLE translation_operations (
-    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    slug         TEXT NOT NULL UNIQUE,
-    display_name TEXT NOT NULL,
-    description  TEXT,
-    is_active    BOOLEAN NOT NULL DEFAULT true,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+CREATE TABLE instructions (
+    key        TEXT PRIMARY KEY,
+    content    TEXT NOT NULL DEFAULT '',
+    updated_at DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
 );
 
-CREATE TABLE translations (
-    id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    operation_id       UUID NOT NULL REFERENCES translation_operations(id),
-    input_text         TEXT NOT NULL,
-    model_id           UUID NOT NULL REFERENCES llm_models(id),
-    candidate1         TEXT NOT NULL,
-    candidate2         TEXT NOT NULL,
-    candidate3         TEXT NOT NULL,
-    selected_candidate SMALLINT CHECK (selected_candidate BETWEEN 1 AND 3),
-    created_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+CREATE TABLE history (
+    id              TEXT PRIMARY KEY,
+    type            TEXT NOT NULL CHECK (type IN (
+                        'simplify', 'en_fa', 'fa_en', 'term_en', 'term_fa', 'refine', 'symptoms',
+                        'compare_en', 'compare_fa', 'grammar_en', 'grammar_fa', 'cursor', 'frontend')),
+    input_text      TEXT NOT NULL,
+    result_text     TEXT NOT NULL,
+    model           TEXT NOT NULL,
+    instruction_key TEXT NOT NULL,
+    metadata        TEXT,
+    quiz_shown_count INTEGER NOT NULL DEFAULT 0,
+    created_at      DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
 );
 
-CREATE TABLE reviews (
-    id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    translation_id     UUID NOT NULL REFERENCES translations(id) ON DELETE CASCADE,
-    rating             SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
-    comment            TEXT,
-    selected_candidate SMALLINT CHECK (selected_candidate BETWEEN 1 AND 3),
-    created_at         TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX idx_translations_operation_created ON translations(operation_id, created_at DESC);
-CREATE INDEX idx_reviews_translation_id ON reviews(translation_id);
-
-INSERT INTO translation_operations (slug, display_name, description) VALUES
-    ('en_to_fa', 'English → Persian', 'Machine translation from English to Persian'),
-    ('en_proofreading', 'English Proofreading', 'Linguistic correction and clarity of English source text'),
-    ('fa_to_en', 'Persian → English', 'Machine translation from Persian to English'),
-    ('en_lexical_retrieval', 'English Lexical Retrieval', 'Retrieve candidate English terms from a semantic description');
+CREATE INDEX idx_history_created_at ON history(created_at DESC);
+CREATE INDEX idx_history_type ON history(type);

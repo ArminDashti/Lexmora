@@ -2,7 +2,7 @@
 
 Vue 3 SPA for the Lexmora app. Dark-themed UI for login, transforms (including compare), history, editable AI instructions, usage stats, and OpenRouter settings. Includes installable PWA support with a service worker that precaches the UI shell and static assets.
 
-The Go API and PostgreSQL live in the separate [lexmora-api](https://github.com/ArminDashti/lexmora-api) repository.
+The Go API (SQLite database) lives in the separate [lexmora-api](https://github.com/ArminDashti/lexmora-api) repository.
 
 ## Tech stack
 

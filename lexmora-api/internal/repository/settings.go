@@ -2,24 +2,24 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ArminDashti/lexmora-api/internal/domain"
 )
 
 type SettingsRepository struct {
-	pool *pgxpool.Pool
+	conn *sql.DB
 }
 
-func NewSettingsRepository(pool *pgxpool.Pool) *SettingsRepository {
-	return &SettingsRepository{pool: pool}
+func NewSettingsRepository(conn *sql.DB) *SettingsRepository {
+	return &SettingsRepository{conn: conn}
 }
 
 func (r *SettingsRepository) Get(ctx context.Context) (*domain.AppSettings, error) {
 	var s domain.AppSettings
-	err := r.pool.QueryRow(ctx, `
+	err := r.conn.QueryRowContext(ctx, `
 		SELECT openrouter_api_key, gemini_api_key, opencode_go_api_key, api_provider, model_name, updated_at
 		FROM app_settings WHERE id = 1
 	`).Scan(&s.OpenRouterAPIKey, &s.GeminiAPIKey, &s.OpenCodeGoAPIKey, &s.APIProvider, &s.ModelName, &s.UpdatedAt)
@@ -46,14 +46,14 @@ func (r *SettingsRepository) Update(ctx context.Context, u SettingsUpdate) (*dom
 		*u.APIProvider = p
 	}
 
-	_, err := r.pool.Exec(ctx, `
+	_, err := r.conn.ExecContext(ctx, `
 		UPDATE app_settings SET
-			openrouter_api_key = COALESCE($1, openrouter_api_key),
-			gemini_api_key = COALESCE($2, gemini_api_key),
-			opencode_go_api_key = COALESCE($3, opencode_go_api_key),
-			api_provider = COALESCE($4, api_provider),
-			model_name = COALESCE($5, model_name),
-			updated_at = now()
+			openrouter_api_key = COALESCE(?, openrouter_api_key),
+			gemini_api_key = COALESCE(?, gemini_api_key),
+			opencode_go_api_key = COALESCE(?, opencode_go_api_key),
+			api_provider = COALESCE(?, api_provider),
+			model_name = COALESCE(?, model_name),
+			updated_at = strftime('%Y-%m-%d %H:%M:%f', 'now')
 		WHERE id = 1
 	`, u.OpenRouterAPIKey, u.GeminiAPIKey, u.OpenCodeGoAPIKey, u.APIProvider, u.ModelName)
 	if err != nil {
@@ -63,6 +63,6 @@ func (r *SettingsRepository) Update(ctx context.Context, u SettingsUpdate) (*dom
 }
 
 func (r *SettingsRepository) ClearAllData(ctx context.Context) error {
-	_, err := r.pool.Exec(ctx, `DELETE FROM history`)
+	_, err := r.conn.ExecContext(ctx, `DELETE FROM history`)
 	return err
 }

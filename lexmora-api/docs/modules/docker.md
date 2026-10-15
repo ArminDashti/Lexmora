@@ -1,6 +1,6 @@
 # Docker deployment
 
-API and PostgreSQL run from this repo. The web UI is deployed separately from [lexmora-webui](https://github.com/ArminDashti/lexmora-webui).
+The API (with its SQLite database) runs from this repo. The web UI is deployed separately from [lexmora-webui](https://github.com/ArminDashti/lexmora-webui).
 
 ## Files
 
@@ -11,7 +11,7 @@ API and PostgreSQL run from this repo. The web UI is deployed separately from [l
 | `.armin/docker-scripts/run-on-docker-server.ps1` | Remote SSH deploy (YAML-only) |
 | `.armin/docker-scripts/run-on-docker-server.yaml` | Remote settings (`ssh`, `volume_dir`) |
 | `.deploy/docker/Dockerfile` | Go API image (build context = repo root) |
-| `.deploy/docker/docker-compose.yml` | `lexmora-pgsql` + `lexmora-api` on external `t3-net` |
+| `docker-compose.yml` | `lexmora-api` on external `t3-net` (SQLite file in volume `lexmora-api-vol`) |
 | `.deploy/docker/docker-compose.openrouter-proxy.yml` | Server overlay: join `openvpn-net`, set `OPENROUTER_HTTP_PROXY=http://mullvad-1:8778` |
 | `.deploy/docker/docker-compose.publish.yml` | Legacy optional host-port overlay (compose now has inline `API_PUBLISH_PORT`) |
 | `.deploy/docker/run-on-docker-*.ps1` / `.yaml` | Legacy deploy pair (prefer `.armin/docker-scripts/`) |
@@ -24,7 +24,6 @@ API and PostgreSQL run from this repo. The web UI is deployed separately from [l
 
 | Service | Container | Host port | Notes |
 |---------|-----------|-----------|-------|
-| `lexmora-pgsql` | `lexmora-pgsql` | (internal) | Volume `lexmora-pgsql-vol` |
 | `lexmora-api` | `lexmora-api` | Host bind only via `docker-compose.publish.yml` when `publish_port` is set | HAProxy uses Docker DNS `lexmora-api:8080` on `t3-net` |
 
 Compose override env vars from `.armin` scripts: `API_IMAGE_TAG`, `DOCKER_NETWORK`, `API_PUBLISH_PORT`.
@@ -72,8 +71,6 @@ HAProxy already routes:
 `build_image_on: server`: sync repo → teardown → remote `docker build` → `compose up -d`.
 
 Image load/build runs **after** `delete_image` teardown so a fresh upload is not wiped.
-
-If remote cannot pull `postgres:16` (Docker Hub TLS timeouts), save/load it the same way as the API image before `compose up`.
 
 Public DNS: `lexmora.xaigrok.ir` → `2.144.27.74`. Ensure `lexmora-api.xaigrok.ir` has the same A record (cert + HAProxy backend already exist).
 

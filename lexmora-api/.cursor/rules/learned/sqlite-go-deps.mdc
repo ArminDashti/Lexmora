@@ -1,0 +1,22 @@
+---
+description: Go dependency pitfalls when adding or changing the SQLite driver in lexmora-api (go.mod go directive, modernc pins). Use when touching go.mod or go.sum.
+---
+
+# SQLite driver deps in lexmora-api
+
+**Goal:** keep `go.mod` on `go 1.22.0` (matches `dockerfile` base `golang:1.22-alpine`) while using `modernc.org/sqlite`.
+
+## Steps
+1. Driver pins: `modernc.org/sqlite v1.34.5`, `modernc.org/libc v1.55.3`, `modernc.org/mathutil v1.6.0`, `modernc.org/memory v1.8.0`, `golang.org/x/sys v0.25.0`, `golang.org/x/sync v0.8.0`.
+2. Edit the `go` line in `go.mod` by hand to `go 1.22.0`.
+3. Verify: `go build ./...`, `go vet ./...`, `go test ./...`. Cross-check: `$env:CGO_ENABLED='0'; $env:GOOS='linux'; go build -o NUL ./cmd/server`.
+4. Check no dep needs Go 1.26: `go list -m -f '{{.Path}} {{.GoVersion}}' all` and grep for ` 1.2[3-9]| 1.26`.
+
+## Gotchas
+- `go get modernc.org/sqlite@latest` bumps `go` to 1.26 (via libc, x/sys, x/sync). Re-pin with step 1.
+- `go mod tidy` can re-raise the `go` line (it pulled `x/sync v0.23.0`). Re-run step 2 after tidy.
+- `go mod edit -go=1.22` is rejected ("invalid -go option"). Edit the file directly.
+
+## What didn't work
+- `go mod edit -go=1.22` (rejected).
+- Leaving the latest modernc: needs Go 1.26, which would force a Dockerfile base image bump.

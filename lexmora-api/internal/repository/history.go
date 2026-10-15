@@ -2,24 +2,24 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/ArminDashti/lexmora-api/internal/db"
 	"github.com/ArminDashti/lexmora-api/internal/domain"
+	"github.com/google/uuid"
 )
 
 type HistoryRepository struct {
-	pool *pgxpool.Pool
+	conn *sql.DB
 }
 
-func NewHistoryRepository(pool *pgxpool.Pool) *HistoryRepository {
-	return &HistoryRepository{pool: pool}
+func NewHistoryRepository(conn *sql.DB) *HistoryRepository {
+	return &HistoryRepository{conn: conn}
 }
 
 type HistoryListFilter struct {
@@ -32,7 +32,7 @@ type HistoryListFilter struct {
 	To        *time.Time
 }
 
-func appendHistoryTypeFilter(where []string, args []any, argN int, types []string) ([]string, []any, int) {
+func appendHistoryTypeFilter(where []string, args []any, types []string) ([]string, []any) {
 	cleaned := make([]string, 0, len(types))
 	seen := map[string]struct{}{}
 	for _, t := range types {
@@ -47,11 +47,14 @@ func appendHistoryTypeFilter(where []string, args []any, argN int, types []strin
 		cleaned = append(cleaned, t)
 	}
 	if len(cleaned) == 0 {
-		return where, args, argN
+		return where, args
 	}
-	where = append(where, fmt.Sprintf("type::text = ANY($%d)", argN))
-	args = append(args, cleaned)
-	return where, args, argN + 1
+	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(cleaned)), ",")
+	where = append(where, "type IN ("+placeholders+")")
+	for _, t := range cleaned {
+		args = append(args, t)
+	}
+	return where, args
 }
 
 func (r *HistoryRepository) Create(ctx context.Context, record domain.HistoryRecord) (*domain.HistoryRecord, error) {
@@ -62,11 +65,11 @@ func (r *HistoryRepository) Create(ctx context.Context, record domain.HistoryRec
 
 	var h domain.HistoryRecord
 	var metaBytes []byte
-	err := r.pool.QueryRow(ctx, `
-		INSERT INTO history (type, input_text, result_text, model, instruction_key, metadata)
-		VALUES ($1, $2, $3, $4, $5, $6)
+	err := r.conn.QueryRowContext(ctx, `
+		INSERT INTO history (id, type, input_text, result_text, model, instruction_key, metadata)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
 		RETURNING id, type, input_text, result_text, model, instruction_key, metadata, created_at
-	`, record.Type, record.InputText, record.ResultText, record.Model, record.InstructionKey, metadata).Scan(
+	`, uuid.New(), record.Type, record.InputText, record.ResultText, record.Model, record.InstructionKey, metadata).Scan(
 		&h.ID, &h.Type, &h.InputText, &h.ResultText, &h.Model, &h.InstructionKey, &metaBytes, &h.CreatedAt,
 	)
 	if err != nil {
@@ -78,7 +81,7 @@ func (r *HistoryRepository) Create(ctx context.Context, record domain.HistoryRec
 }
 
 func (r *HistoryRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.HistoryRecord, error) {
-	return r.scanOne(ctx, `SELECT id, type, input_text, result_text, model, instruction_key, metadata, created_at FROM history WHERE id = $1`, id)
+	return r.scanOne(ctx, `SELECT id, type, input_text, result_text, model, instruction_key, metadata, created_at FROM history WHERE id = ?`, id)
 }
 
 func (r *HistoryRepository) List(ctx context.Context, filter HistoryListFilter) ([]domain.HistoryRecord, error) {
@@ -107,33 +110,28 @@ func (r *HistoryRepository) List(ctx context.Context, filter HistoryListFilter) 
 
 	where := []string{"1=1"}
 	args := []any{}
-	argN := 1
 
-	where, args, argN = appendHistoryTypeFilter(where, args, argN, filter.Types)
+	where, args = appendHistoryTypeFilter(where, args, filter.Types)
 	if filter.From != nil {
-		where = append(where, fmt.Sprintf("created_at >= $%d", argN))
-		args = append(args, *filter.From)
-		argN++
+		where = append(where, "created_at >= ?")
+		args = append(args, db.TimeText(*filter.From))
 	}
 	if filter.To != nil {
-		where = append(where, fmt.Sprintf("created_at < $%d", argN))
-		args = append(args, *filter.To)
-		argN++
+		where = append(where, "created_at < ?")
+		args = append(args, db.TimeText(*filter.To))
 	}
 
 	args = append(args, limit, filter.Offset)
-	limitIdx := argN
-	offsetIdx := argN + 1
 
 	query := fmt.Sprintf(`
 		SELECT id, type, input_text, result_text, model, instruction_key, metadata, created_at
 		FROM history
 		WHERE %s
 		ORDER BY %s %s
-		LIMIT $%d OFFSET $%d
-	`, strings.Join(where, " AND "), col, order, limitIdx, offsetIdx)
+		LIMIT ? OFFSET ?
+	`, strings.Join(where, " AND "), col, order)
 
-	rows, err := r.pool.Query(ctx, query, args...)
+	rows, err := r.conn.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list history: %w", err)
 	}
@@ -154,18 +152,22 @@ func (r *HistoryRepository) List(ctx context.Context, filter HistoryListFilter) 
 }
 
 func (r *HistoryRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	tag, err := r.pool.Exec(ctx, `DELETE FROM history WHERE id = $1`, id)
+	res, err := r.conn.ExecContext(ctx, `DELETE FROM history WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("delete history: %w", err)
 	}
-	if tag.RowsAffected() == 0 {
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("delete history: %w", err)
+	}
+	if n == 0 {
 		return ErrNotFound
 	}
 	return nil
 }
 
 func (r *HistoryRepository) ClearAll(ctx context.Context) error {
-	_, err := r.pool.Exec(ctx, `DELETE FROM history`)
+	_, err := r.conn.ExecContext(ctx, `DELETE FROM history`)
 	return err
 }
 
@@ -177,19 +179,17 @@ type statsRow struct {
 func (r *HistoryRepository) CountByPeriod(ctx context.Context, since, until *time.Time) (domain.StatsBucket, error) {
 	query := `SELECT type, COUNT(*) FROM history WHERE 1=1`
 	args := []any{}
-	argN := 1
 	if since != nil {
-		query += fmt.Sprintf(" AND created_at >= $%d", argN)
-		args = append(args, *since)
-		argN++
+		query += " AND created_at >= ?"
+		args = append(args, db.TimeText(*since))
 	}
 	if until != nil {
-		query += fmt.Sprintf(" AND created_at < $%d", argN)
-		args = append(args, *until)
+		query += " AND created_at < ?"
+		args = append(args, db.TimeText(*until))
 	}
 	query += ` GROUP BY type`
 
-	rows, err := r.pool.Query(ctx, query, args...)
+	rows, err := r.conn.QueryContext(ctx, query, args...)
 	if err != nil {
 		return domain.StatsBucket{}, fmt.Errorf("count stats: %w", err)
 	}
@@ -210,23 +210,20 @@ func (r *HistoryRepository) CountByPeriod(ctx context.Context, since, until *tim
 func (r *HistoryRepository) Count(ctx context.Context, filter HistoryListFilter) (int, error) {
 	where := []string{"1=1"}
 	args := []any{}
-	argN := 1
 
-	where, args, argN = appendHistoryTypeFilter(where, args, argN, filter.Types)
+	where, args = appendHistoryTypeFilter(where, args, filter.Types)
 	if filter.From != nil {
-		where = append(where, fmt.Sprintf("created_at >= $%d", argN))
-		args = append(args, *filter.From)
-		argN++
+		where = append(where, "created_at >= ?")
+		args = append(args, db.TimeText(*filter.From))
 	}
 	if filter.To != nil {
-		where = append(where, fmt.Sprintf("created_at < $%d", argN))
-		args = append(args, *filter.To)
-		argN++
+		where = append(where, "created_at < ?")
+		args = append(args, db.TimeText(*filter.To))
 	}
 
 	query := fmt.Sprintf(`SELECT COUNT(*) FROM history WHERE %s`, strings.Join(where, " AND "))
 	var total int
-	if err := r.pool.QueryRow(ctx, query, args...).Scan(&total); err != nil {
+	if err := r.conn.QueryRowContext(ctx, query, args...).Scan(&total); err != nil {
 		return 0, fmt.Errorf("count history: %w", err)
 	}
 	return total, nil
@@ -245,13 +242,13 @@ func (r *HistoryRepository) ListForQuiz(ctx context.Context, limit int) ([]domai
 		SELECT id, type, input_text, result_text, model, instruction_key, metadata, created_at, quiz_shown_count
 		FROM history
 		WHERE type IN ('en_fa', 'fa_en')
-		  AND btrim(input_text) <> ''
-		  AND btrim(result_text) <> ''
+		  AND trim(input_text) <> ''
+		  AND trim(result_text) <> ''
 		ORDER BY quiz_shown_count ASC, random()
-		LIMIT $1
+		LIMIT ?
 	`
 
-	rows, err := r.pool.Query(ctx, query, limit)
+	rows, err := r.conn.QueryContext(ctx, query, limit)
 	if err != nil {
 		return nil, fmt.Errorf("list history for quiz: %w", err)
 	}
@@ -274,24 +271,23 @@ func (r *HistoryRepository) ListForQuiz(ctx context.Context, limit int) ([]domai
 }
 
 // BumpQuizShown increments quiz_shown_count once per id occurrence in ids.
+// ponytail: one UPDATE per id inside a transaction; fine for the 500-row quiz cap.
 func (r *HistoryRepository) BumpQuizShown(ctx context.Context, ids []uuid.UUID) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	_, err := r.pool.Exec(ctx, `
-		UPDATE history AS h
-		SET quiz_shown_count = h.quiz_shown_count + c.cnt
-		FROM (
-			SELECT id, COUNT(*)::int AS cnt
-			FROM unnest($1::uuid[]) AS id
-			GROUP BY id
-		) AS c
-		WHERE h.id = c.id
-	`, ids)
+	tx, err := r.conn.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("bump quiz shown: %w", err)
 	}
-	return nil
+	defer tx.Rollback()
+
+	for _, id := range ids {
+		if _, err := tx.ExecContext(ctx, `UPDATE history SET quiz_shown_count = quiz_shown_count + 1 WHERE id = ?`, id); err != nil {
+			return fmt.Errorf("bump quiz shown: %w", err)
+		}
+	}
+	return tx.Commit()
 }
 
 func addToBucket(b *domain.StatsBucket, t domain.HistoryType, count int) {
@@ -322,10 +318,10 @@ func addToBucket(b *domain.StatsBucket, t domain.HistoryType, count int) {
 func (r *HistoryRepository) scanOne(ctx context.Context, query string, args ...any) (*domain.HistoryRecord, error) {
 	var h domain.HistoryRecord
 	var metaBytes []byte
-	err := r.pool.QueryRow(ctx, query, args...).Scan(
+	err := r.conn.QueryRowContext(ctx, query, args...).Scan(
 		&h.ID, &h.Type, &h.InputText, &h.ResultText, &h.Model, &h.InstructionKey, &metaBytes, &h.CreatedAt,
 	)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
 	if err != nil {
