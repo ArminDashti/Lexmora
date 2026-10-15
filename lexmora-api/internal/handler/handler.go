@@ -21,6 +21,7 @@ type Handler struct {
 	instructionService *service.InstructionService
 	quizService        *service.QuizService
 	openRouter         *service.OpenRouterClient
+	openCodeGo         *service.OpenCodeGoClient
 }
 
 func New(
@@ -32,6 +33,7 @@ func New(
 	instructionService *service.InstructionService,
 	quizService *service.QuizService,
 	openRouter *service.OpenRouterClient,
+	openCodeGo *service.OpenCodeGoClient,
 ) *Handler {
 	return &Handler{
 		authService:        authService,
@@ -42,6 +44,7 @@ func New(
 		instructionService: instructionService,
 		quizService:        quizService,
 		openRouter:         openRouter,
+		openCodeGo:         openCodeGo,
 	}
 }
 
@@ -66,6 +69,10 @@ func (h *Handler) handleError(c *gin.Context, err error) {
 		}
 		if err != nil && strings.Contains(err.Error(), "gemini") {
 			c.JSON(http.StatusBadGateway, domain.APIError{Error: err.Error(), Code: "GEMINI_ERROR"})
+			return
+		}
+		if err != nil && strings.Contains(err.Error(), "opencode go") {
+			c.JSON(http.StatusBadGateway, domain.APIError{Error: err.Error(), Code: "OPENCODE_GO_ERROR"})
 			return
 		}
 		if err != nil && (strings.Contains(err.Error(), "required") || strings.Contains(err.Error(), "invalid") || strings.Contains(err.Error(), "not found for key") || strings.Contains(err.Error(), "not enough")) {

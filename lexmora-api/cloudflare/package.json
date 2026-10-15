@@ -10,6 +10,7 @@
     "d1:migrate:remote": "wrangler d1 migrations apply lexmora --remote"
   },
   "dependencies": {
+    "@toon-format/toon": "^4.4.0",
     "bcryptjs": "^2.4.3",
     "hono": "^4.7.2",
     "jose": "^6.0.8"

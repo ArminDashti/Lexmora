@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@toon-format/toon": "^4.4.0",
     "dompurify": "^3.4.12",
     "marked": "^18.0.7",
     "pinia": "^2.3.0",

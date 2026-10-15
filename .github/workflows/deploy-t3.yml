@@ -1,0 +1,86 @@
+# Push to main → rebuild and restart Lexmora containers on Irancell-T3.
+#
+# Required GitHub repository secrets (Settings → Secrets and variables → Actions):
+#   T3_SSH_PRIVATE_KEY  — private key for cloud-admin (ed25519), full PEM
+#   T3_HOST             — e.g. 2.144.27.124
+#   T3_SSH_USER         — cloud-admin
+# Optional: T3_SSH_PORT (secret or repo variable) — default 22 (host sshd).
+# Use 443 only if GitHub cannot reach :22; :443 shares HAProxy with SoftEther HTTPS.
+
+name: Deploy to Irancell-T3
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lexmora-api/**'
+      - 'lexmora-webui/**'
+      - '.github/workflows/deploy-t3.yml'
+      - '.github/scripts/**'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-t3-lexmora
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed stacks
+        id: areas
+        run: |
+          set -euo pipefail
+          deploy_api=false
+          deploy_webui=false
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            deploy_api=true
+            deploy_webui=true
+          else
+            before="${{ github.event.before }}"
+            after="${{ github.sha }}"
+            if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ]; then
+              deploy_api=true
+              deploy_webui=true
+            else
+              while IFS= read -r f; do
+                case "$f" in
+                  lexmora-api/*|.github/*) deploy_api=true ;;
+                  lexmora-webui/*|.github/*) deploy_webui=true ;;
+                esac
+              done < <(git diff --name-only "$before" "$after")
+            fi
+          fi
+          echo "api=$deploy_api" >> "$GITHUB_OUTPUT"
+          echo "webui=$deploy_webui" >> "$GITHUB_OUTPUT"
+
+      - name: Configure SSH
+        env:
+          T3_SSH_PRIVATE_KEY: ${{ secrets.T3_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$T3_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          PORT="${{ secrets.T3_SSH_PORT || vars.T3_SSH_PORT || '22' }}"
+          ssh-keyscan -p "$PORT" -H "${{ secrets.T3_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy API stack
+        if: steps.areas.outputs.api == 'true'
+        env:
+          T3_HOST: ${{ secrets.T3_HOST }}
+          T3_SSH_USER: ${{ secrets.T3_SSH_USER }}
+          T3_SSH_PORT: ${{ secrets.T3_SSH_PORT || vars.T3_SSH_PORT || '22' }}
+        run: bash .github/scripts/deploy-t3-component.sh api
+
+      - name: Deploy Web UI stack
+        if: steps.areas.outputs.webui == 'true'
+        env:
+          T3_HOST: ${{ secrets.T3_HOST }}
+          T3_SSH_USER: ${{ secrets.T3_SSH_USER }}
+          T3_SSH_PORT: ${{ secrets.T3_SSH_PORT || vars.T3_SSH_PORT || '22' }}
+        run: bash .github/scripts/deploy-t3-component.sh webui

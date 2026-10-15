@@ -28,9 +28,9 @@ Consumed from [lexmora-api](https://github.com/ArminDashti/lexmora-api). All aut
 | POST | `/api/v1/instructions` | Yes | Create instruction from operation / direction / mode |
 | GET | `/api/v1/instructions/:key` | Yes | Get instruction content |
 | PUT | `/api/v1/instructions/:key` | Yes | Update instruction content |
-| GET | `/api/v1/settings` | Yes | Get provider keys and model (`api_provider`: `openrouter`\|`gemini`, `openrouter_api_key`, `gemini_api_key`, `model_name`) |
+| GET | `/api/v1/settings` | Yes | Get provider keys and model (`api_provider`: `openrouter`\|`gemini`\|`opencode_go`, keys, `model_name`) |
 | PATCH | `/api/v1/settings` | Yes | Update provider, keys, and/or model |
-| GET | `/api/v1/settings/models` | Yes | Search OpenRouter models (`q`) |
+| GET | `/api/v1/settings/models` | Yes | Search models for active provider (`q`; OpenRouter or OpenCode Go) |
 | GET | `/api/v1/settings/credits` | Yes | Remaining OpenRouter credits / key usage |
 | DELETE | `/api/v1/settings/data` | Yes | Delete all history rows |
 
