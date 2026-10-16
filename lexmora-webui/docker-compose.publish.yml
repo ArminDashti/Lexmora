@@ -7,5 +7,5 @@ services:
   lexmora-webui:
     ports:
       - target: 80
-        published: ${PUBLISH_PORT:-8090}
+        published: ${LEXMORA_WEB_PORT:-${PUBLISH_PORT:-8090}}
         protocol: tcp

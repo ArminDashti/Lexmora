@@ -5,5 +5,5 @@ services:
   lexmora-api:
     ports:
       - target: 8080
-        published: ${PUBLISH_PORT:-8083}
+        published: ${LEXMORA_API_PORT:-${PUBLISH_PORT:-8083}}
         protocol: tcp
