@@ -1,5 +1,5 @@
-# Server overlay: route OpenRouter via 3proxy in windscribe netns (same as SoftEther).
+# Server overlay: route OpenRouter via 3proxy in mullvad-uk netns (windscribe container no longer exists).
 services:
   lexmora-api:
     environment:
-      OPENROUTER_HTTP_PROXY: ${OPENROUTER_HTTP_PROXY:-http://windscribe:8778}
+      OPENROUTER_HTTP_PROXY: ${OPENROUTER_HTTP_PROXY:-http://mullvad-uk:8778}
