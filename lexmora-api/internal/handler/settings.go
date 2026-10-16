@@ -77,7 +77,7 @@ func (h *Handler) SearchModels(c *gin.Context) {
 			})
 			return
 		}
-		models, err = h.openCodeGo.ListModels(c.Request.Context(), settings.OpenCodeGoAPIKey, c.Query("q"), 50)
+		models, err = h.openCodeGo.ListModels(c.Request.Context(), settings.OpenCodeGoAPIKey, c.Query("q"), 500)
 	case "openrouter":
 		if strings.TrimSpace(settings.OpenRouterAPIKey) == "" {
 			c.JSON(http.StatusBadRequest, domain.APIError{

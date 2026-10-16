@@ -22,8 +22,12 @@ func TestOpenCodeGoEndpointForModel(t *testing.T) {
 		}
 	}
 
-	_, err := opencodeGoEndpointForModel("not-a-real-model")
-	if err == nil {
-		t.Fatal("expected error for unknown model")
+	kind, err := opencodeGoEndpointForModel("brand-new-model")
+	if err != nil || kind != opencodeGoChat {
+		t.Fatalf("unknown model: got %q, %v; want chat fallback", kind, err)
+	}
+
+	if _, err := opencodeGoEndpointForModel("  "); err == nil {
+		t.Fatal("expected error for empty model")
 	}
 }

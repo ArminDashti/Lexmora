@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -242,8 +243,8 @@ func (c *OpenCodeGoClient) ListModels(ctx context.Context, apiKey, q string, lim
 	if limit <= 0 {
 		limit = 50
 	}
-	if limit > 200 {
-		limit = 200
+	if limit > 500 {
+		limit = 500
 	}
 
 	respBody, status, err := c.do(ctx, http.MethodGet, "/models", apiKey, uuid.NewString(), nil)
@@ -260,6 +261,7 @@ func (c *OpenCodeGoClient) ListModels(ctx context.Context, apiKey, q string, lim
 	}
 
 	q = strings.ToLower(strings.TrimSpace(q))
+	sort.SliceStable(parsed.Data, func(i, j int) bool { return parsed.Data[i].ID < parsed.Data[j].ID })
 	out := make([]OpenRouterModel, 0, len(parsed.Data))
 	for _, m := range parsed.Data {
 		id := normalizeOpenCodeGoModelID(m.ID)
@@ -299,6 +301,11 @@ func (c *OpenCodeGoClient) do(ctx context.Context, method, path, apiKey, session
 		return nil, 0, fmt.Errorf("create request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+apiKey)
+	if path == "/messages" {
+		// The Anthropic-compatible endpoint authenticates with x-api-key, not the Bearer token.
+		req.Header.Set("x-api-key", apiKey)
+		req.Header.Set("anthropic-version", "2023-06-01")
+	}
 	req.Header.Set("User-Agent", opencodeGoUserAgent)
 	if sessionID != "" {
 		req.Header.Set("x-opencode-session", sessionID)

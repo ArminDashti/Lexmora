@@ -171,6 +171,12 @@ async function clearAll() {
   }
 }
 
+function onModelFocus() {
+  showModelResults.value = true
+  // Input still shows the selected model: list every model instead of filtering by its id.
+  if (modelQuery.value.trim() === modelName.value.trim()) searchModels('')
+}
+
 function onModelBlur() {
   setTimeout(() => {
     showModelResults.value = false
@@ -210,7 +216,7 @@ onUnmounted(() => {
             class="input-field"
             placeholder="Search OpenRouter models..."
             autocomplete="off"
-            @focus="showModelResults = true"
+            @focus="onModelFocus"
             @blur="onModelBlur"
           />
           <p class="mt-1 text-xs text-gray-500">
@@ -300,7 +306,7 @@ onUnmounted(() => {
             class="input-field"
             placeholder="Search OpenCode Go models..."
             autocomplete="off"
-            @focus="showModelResults = true"
+            @focus="onModelFocus"
             @blur="onModelBlur"
           />
           <p class="mt-1 text-xs text-gray-500">
