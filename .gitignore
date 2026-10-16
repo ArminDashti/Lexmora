@@ -45,4 +45,3 @@ graphify-out/
 .gitnexus/
 !.env.example
 /.cursor/skills/caveman-setup/SKILL.md
-/lexmora-webui/src/views/SettingsView.vue
