@@ -2,11 +2,11 @@ lexmora-api/
 ├── cmd/server/main.go              # Gin server entry and routes
 ├── internal/
 │   ├── config/config.go            # Env-based configuration
-│   ├── db/db.go                    # Postgres pool and migrations
+│   ├── db/db.go                    # SQLite open and migrations
 │   ├── domain/models.go            # Domain types and instruction keys
 │   ├── handler/                    # HTTP handlers
 │   ├── middleware/auth.go          # JWT authentication middleware
-│   ├── repository/                 # Postgres data access
+│   ├── repository/                 # SQLite data access
 │   └── service/                    # Business logic and OpenRouter client
 ├── migrations/                     # SQL up/down migrations
 ├── instructions/                   # Reference prompt templates
@@ -18,5 +18,5 @@ lexmora-api/
 ├── run-on-docker-server.ps1        # Stub → .armin/docker-scripts/
 ├── .docker/stack.manifest.json     # Docker image tags and ports
 ├── go.mod                          # Go module definition
-├── db.md                           # PostgreSQL table and enum reference
+├── db.md                           # SQLite table and enum reference
 └── README.md                       # Setup and usage guide
