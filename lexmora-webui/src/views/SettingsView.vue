@@ -2,6 +2,12 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { api, type CreditsInfo, type OpenRouterModel } from '../api/client'
 import Icon from '../components/Icon.vue'
+import {
+  ensureTransformNotificationPermission,
+  isTransformFinishedNotifyEnabled,
+  setTransformFinishedNotifyEnabled,
+  transformNotificationSupported,
+} from '../utils/transformNotification'
 
 type ApiProvider = 'openrouter' | 'gemini' | 'opencode_go'
 
@@ -24,6 +30,8 @@ const saving = ref(false)
 const clearing = ref(false)
 const error = ref('')
 const saved = ref(false)
+const transformNotify = ref(isTransformFinishedNotifyEnabled())
+const transformNotifyHint = ref('')
 
 const isOpenRouter = computed(() => apiProvider.value === 'openrouter')
 const isGemini = computed(() => apiProvider.value === 'gemini')
@@ -39,6 +47,18 @@ function readStoredProvider(): ApiProvider {
 
 function persistProvider(provider: ApiProvider) {
   localStorage.setItem(PROVIDER_STORAGE_KEY, provider)
+}
+
+async function onTransformNotifyChange() {
+  transformNotifyHint.value = ''
+  setTransformFinishedNotifyEnabled(transformNotify.value)
+  if (!transformNotify.value) return
+  const permission = await ensureTransformNotificationPermission()
+  if (permission === 'denied') {
+    transformNotifyHint.value = 'Notifications are blocked in the browser. Allow them in site settings.'
+  } else if (permission === 'unsupported') {
+    transformNotifyHint.value = 'This browser does not support notifications.'
+  }
 }
 
 async function load() {
@@ -332,7 +352,31 @@ onUnmounted(() => {
         </div>
       </template>
 
-      <div class="flex items-center gap-4">        <button class="btn-primary" :disabled="saving" @click="save">
+      <div
+        v-if="transformNotificationSupported()"
+        class="rounded-lg border border-surface-border bg-surface/50 p-3"
+      >
+        <h3 class="mb-2 text-sm font-medium text-gray-300">Notifications</h3>
+        <label class="flex cursor-pointer items-start gap-2 text-sm text-gray-300">
+          <input
+            v-model="transformNotify"
+            type="checkbox"
+            class="mt-1"
+            @change="onTransformNotifyChange"
+          />
+          <span>
+            Notify when a transform finishes
+            <span class="mt-0.5 block text-xs text-gray-500">
+              Uses the system notification when the API returns a result (helpful if you switch tabs
+              while waiting).
+            </span>
+          </span>
+        </label>
+        <p v-if="transformNotifyHint" class="mt-2 text-xs text-amber-400">{{ transformNotifyHint }}</p>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <button class="btn-primary" :disabled="saving" @click="save">
           <Icon name="save" />
           {{ saving ? 'Saving...' : 'Save settings' }}
         </button>

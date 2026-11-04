@@ -13,6 +13,10 @@ import MarkdownPreview from '../components/MarkdownPreview.vue'
 import { formatLocalDateTime } from '../utils/datetime'
 import { buildInstructionQuery } from '../utils/instructionKey'
 import { startsWithPersian, textDir } from '../utils/textDirection'
+import {
+  notifyTransformFinished,
+  prepareTransformFinishedNotification,
+} from '../utils/transformNotification'
 
 const options = ref<TransformOptions | null>(null)
 const operation = ref('')
@@ -312,8 +316,11 @@ async function submit() {
     }
   }
 
+  await prepareTransformFinishedNotification()
+
   try {
     result.value = await api.transform(payload)
+    notifyTransformFinished(currentOp.value?.label ?? operation.value)
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Transform failed'
   } finally {

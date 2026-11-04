@@ -5,7 +5,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Google Sans"', 'Vazirmatn', 'system-ui', 'sans-serif'],
+        sans: ['Vazirmatn', 'system-ui', 'sans-serif'],
       },
       colors: {
         surface: {
