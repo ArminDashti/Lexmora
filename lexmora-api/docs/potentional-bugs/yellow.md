@@ -6,4 +6,4 @@
 
 **[JWT]** — Tokens expire after 7 days with no refresh flow; user must re-login.
 
-**[OpenRouter key]** — Stored in plaintext in PostgreSQL. Acceptable for single-user local use; encrypt at rest for shared deployments.
+**[OpenRouter key]** — Stored in plaintext in SQLite (`app_settings`). Acceptable for single-user local use; encrypt at rest for shared deployments.

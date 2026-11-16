@@ -31,6 +31,9 @@ def emit_settings(rows: list[dict]) -> list[str]:
         out.append(
             "UPDATE app_settings SET "
             f"openrouter_api_key = {esc(r.get('openrouter_api_key', ''))}, "
+            f"gemini_api_key = {esc(r.get('gemini_api_key', ''))}, "
+            f"opencode_go_api_key = {esc(r.get('opencode_go_api_key', ''))}, "
+            f"api_provider = {esc(r.get('api_provider', 'openrouter'))}, "
             f"model_name = {esc(r.get('model_name', 'anthropic/claude-3.5-sonnet'))}, "
             f"updated_at = {esc(r.get('updated_at'))} WHERE id = 1;"
         )

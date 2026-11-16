@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""Export Lexmora Postgres tables from Irancell-T3 to local JSON for D1 import."""
+"""Export Lexmora SQLite tables from Irancell-T3 to local JSON (for D1 / offline use).
+
+Lexmora on T3 is SQLite-only (`DATABASE_PATH=/data/lexmora.db` on volume
+`lexmora-api-vol`). Postgres (`lexmora-pgsql`) was removed 2026-11-16.
+"""
 from __future__ import annotations
 
-import base64
 import json
 import subprocess
 import sys
@@ -13,13 +16,20 @@ HOST = "cloud-admin@2.144.27.124"
 PORT = "443"
 OUT = Path(__file__).resolve().parent / "t3_export.json"
 
-REMOTE_SQL = r"""
-SELECT json_build_object(
-  'users', (SELECT COALESCE(json_agg(row_to_json(u)), '[]'::json) FROM users u),
-  'app_settings', (SELECT COALESCE(json_agg(row_to_json(s)), '[]'::json) FROM app_settings s),
-  'instructions', (SELECT COALESCE(json_agg(row_to_json(i)), '[]'::json) FROM instructions i),
-  'history', (SELECT COALESCE(json_agg(row_to_json(h)), '[]'::json) FROM history h)
-);
+REMOTE_PY = r"""
+import json, sqlite3
+c = sqlite3.connect("/tmp/lexmora_export.db")
+c.row_factory = sqlite3.Row
+
+def rows(table):
+    return [dict(r) for r in c.execute(f"SELECT * FROM {table}")]
+
+print(json.dumps({
+    "users": rows("users"),
+    "app_settings": rows("app_settings"),
+    "instructions": rows("instructions"),
+    "history": rows("history"),
+}, ensure_ascii=False, default=str))
 """.strip()
 
 
@@ -57,39 +67,27 @@ def ssh(remote_cmd: str) -> str:
     ).stdout
 
 
-def scp_from(remote_path: str, local_path: Path) -> None:
-    run(
-        [
-            "scp",
-            "-P",
-            PORT,
-            "-i",
-            str(KEY),
-            "-o",
-            "IdentitiesOnly=yes",
-            "-o",
-            "BatchMode=yes",
-            f"{HOST}:{remote_path}",
-            str(local_path),
-        ]
-    )
-
-
 def main() -> None:
-    b64 = base64.b64encode(REMOTE_SQL.encode()).decode()
+    # Checkpoint WAL into a copyable main DB, then dump tables as JSON on the host.
     remote = (
-        f"echo {b64} | base64 -d > /tmp/lexmora_export.sql && "
-        "docker cp /tmp/lexmora_export.sql lexmora-pgsql:/tmp/lexmora_export.sql && "
-        "docker exec lexmora-pgsql psql -U translator -d translator -t -A "
-        "-o /tmp/lexmora_export.json -f /tmp/lexmora_export.sql && "
-        "docker cp lexmora-pgsql:/tmp/lexmora_export.json /tmp/lexmora_export.json && "
-        "wc -c /tmp/lexmora_export.json"
+        "docker exec lexmora-api sh -c "
+        "'cp /data/lexmora.db /tmp/lexmora_export.db "
+        "&& cp /data/lexmora.db-wal /tmp/lexmora_export.db-wal 2>/dev/null || true "
+        "&& cp /data/lexmora.db-shm /tmp/lexmora_export.db-shm 2>/dev/null || true' && "
+        "docker cp lexmora-api:/tmp/lexmora_export.db /tmp/lexmora_export.db && "
+        "docker cp lexmora-api:/tmp/lexmora_export.db-wal /tmp/lexmora_export.db-wal 2>/dev/null || true && "
+        "docker cp lexmora-api:/tmp/lexmora_export.db-shm /tmp/lexmora_export.db-shm 2>/dev/null || true && "
+        "python3 - <<'PY'\n"
+        f"{REMOTE_PY}\n"
+        "PY"
     )
-    print(ssh(remote).strip())
-    scp_from("/tmp/lexmora_export.json", OUT)
-    data = json.loads(OUT.read_text(encoding="utf-8"))
+    raw = ssh(remote).strip()
+    # ssh may prepend non-JSON noise; take last JSON object line.
+    line = raw.splitlines()[-1]
+    data = json.loads(line)
+    OUT.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     for table, rows in data.items():
-        print(f"{table}: {len(rows)} rows")
+        print(f"{table}: {len(rows)} rows", file=sys.stderr)
     print(f"wrote {OUT}")
 
 

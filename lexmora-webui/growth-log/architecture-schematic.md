@@ -4,7 +4,7 @@
 flowchart LR
   Browser --> WebUI[lexmora-webui nginx]
   WebUI -->|"/api/*"| API[lexmora-api]
-  API --> DB[(PostgreSQL)]
+  API --> DB[(SQLite)]
   DeployScripts[.armin/docker-scripts] --> WebUI
 ```
 
